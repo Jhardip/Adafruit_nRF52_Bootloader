@@ -256,16 +256,15 @@ static void check_dfu_mode(void) {
   if (dfu_skip) return;
 
   /*------------- Determine DFU mode (Serial, OTA, FRESET or normal) -------------*/
-  // DFU button pressed
-  dfu_start = dfu_start || button_pressed(BUTTON_DFU);
-
-  // DFU + FRESET are pressed --> OTA
-  _ota_dfu = _ota_dfu || (button_pressed(BUTTON_DFU) && button_pressed(BUTTON_FRESET));
-
   bool const valid_app = bootloader_app_is_valid();
   bool const just_start_app = valid_app && !dfu_start && (*dbl_reset_mem) == DFU_DBL_RESET_APP;
 
   if (!just_start_app && APP_ASKS_FOR_SINGLE_TAP_RESET()) dfu_start = 1;
+
+  NRFX_DELAY_MS(10); //increase delay if it always goes to BLE DFU instead of USB
+
+  //check if double pressed or no valid app and USB present or not, if no USB present - start ble dfu
+  if (((((*dbl_reset_mem) == DFU_DBL_RESET_MAGIC) && reason_reset_pin) || !valid_app) && (NRF_POWER->USBREGSTATUS == 0)) {_ota_dfu = true;} //start OTA DFU
 
   // App mode: Double Reset detection or DFU startup for nrf52832
   if (!(just_start_app || dfu_start || !valid_app)) {
